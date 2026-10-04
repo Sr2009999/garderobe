@@ -44,16 +44,21 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);
 .oc .top{display:flex;justify-content:space-between;align-items:center;gap:8px}.oc b{font-size:16px}
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--bd);display:flex;justify-content:center;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
 nav div{display:flex;width:100%;max-width:760px;gap:6px}
-nav button{flex:1;border:0;background:none;color:var(--mu);padding:9px 4px;border-radius:10px;font:inherit;font-size:13px;font-weight:600}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:9px 2px;border-radius:10px;font:inherit;font-size:12px;font-weight:600}
 nav button.on{background:var(--ac2);color:var(--ac)}
 .car{margin-bottom:6px}.car .cl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);font-weight:700;margin:0 4px 4px}
 .cs{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px calc(50% - 60px);scrollbar-width:none;-webkit-overflow-scrolling:touch}.cs::-webkit-scrollbar{display:none}
 .cs .tile{flex:0 0 120px;scroll-snap-align:center;opacity:.5;transform:scale(.88);transition:.2s}.cs .tile.sel{opacity:1;transform:scale(1);outline:3px solid var(--ac);outline-offset:-3px}
 .tile.none{display:flex;align-items:center;justify-content:center;border-style:dashed;color:var(--mu);font-weight:600;background:var(--card)}
 .stack{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:10px 0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.mu,.tipt{color:var(--mu);font-size:13px}.tipt{margin-top:8px}
+.lk{border:1px solid var(--bd);background:none;color:var(--mu);border-radius:99px;font:inherit;font-size:11px;padding:2px 9px;margin-left:6px;text-transform:none;letter-spacing:0}.lk.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.cal span{font-size:11px;color:var(--mu);padding:4px 0}.cal b{padding:8px 0;border-radius:10px;font-weight:500;cursor:pointer}.cal b.td{outline:1px solid var(--ac)}.cal b.on{background:var(--ac);color:#fff}.cal b.has::after{content:'';display:block;width:5px;height:5px;border-radius:50%;background:var(--ok);margin:2px auto -3px}
+.wl{margin-bottom:10px}.wl .grid{grid-template-columns:repeat(auto-fill,minmax(64px,1fr));margin:8px 0}
 </style></head><body>
 <main><header><h1>Garderobe</h1><p>Beheer je kleding en stel outfits samen</p></header><div id="app"></div></main>
-<nav><div><button data-t="kast">Kast</button><button data-t="stijl">Stylen</button><button data-t="maker">Kiezen</button><button data-t="opg">Outfits</button></div></nav>
+<nav><div><button data-t="kast">Kast</button><button data-t="stijl">Stylen</button><button data-t="maker">Kiezen</button><button data-t="opg">Outfits</button><button data-t="kal">Kalender</button></div></nav>
 <script>
 const CATS=[['schoenen','Schoenen'],['broek','Broeken'],['shirt','Shirts'],['trui','Truien'],['jas','Jassen'],['acc','Accessoires']];
 const ORDER=['jas','trui','shirt','broek','schoenen','acc'];
@@ -73,12 +78,20 @@ const opts=(l,v)=>l.map(o=>`<option ${o===v?'selected':''}>${o}</option>`).join(
 function hue(hex){const n=parseInt(hex.slice(1),16),r=(n>>16)/255,g=(n>>8&255)/255,b=(n&255)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,l=(mx+mn)/2;
  if(d<.12||l<.15||l>.9)return null;const h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;return(h*60+360)%360;}
 function clusters(ids){const c=[];ids.map(byId).filter(Boolean).forEach(i=>{const h=hue(i.color);if(h==null)return;if(!c.some(x=>{const d=Math.abs(x-h);return Math.min(d,360-d)<50}))c.push(h)});return c.length}
-const harmony=ids=>{const n=clusters(ids);return n===0?'Neutraal':n===1?'Harmonisch':n===2?'Gebalanceerd':'Druk'};
+const lum=h=>{const n=parseInt(h.slice(1),16);return((n>>16)*.299+(n>>8&255)*.587+(n&255)*.114)/255};
+function advice(ids){const it=ids.map(byId).filter(Boolean),n=clusters(ids),hs=it.map(i=>hue(i.color)).filter(h=>h!=null),dark=it.length>=3&&it.every(i=>lum(i.color)<.3);
+ let label=n===0?'Neutraal':n===1?'Harmonisch':n===2?'Gebalanceerd':'Druk',tip='';
+ if(n>=3)tip='Veel kleuren: maak één item neutraal (wit, grijs of navy).';
+ else if(n===2){const d=Math.abs(hs[0]-hs[1]);if(Math.min(d,360-d)>150){label='Contrast';tip='Sterk contrast: houd de rest neutraal.'}}
+ if(dark)tip='Heel donker: een lichte polo of lichte sneakers maakt het frisser.';
+ else if(!tip&&n===0)tip='Rustige outfit, werkt altijd.';
+ return{label,tip,dark}}
+const harmony=ids=>advice(ids).label;
 function tile(i,x='',a='',star=false){const bg=i.img?`background-image:url(${i.img});background-color:#fff;background-size:contain;background-repeat:no-repeat`:`background:${i.color}`;
  return `<div class="tile ${x}" style="${bg}" ${a}>${star?`<button class="st ${i.fav?'on':''}" data-fav="${i.id}">★</button>`:''}<div class="l">${esc(i.name)}<small>${lab(i.cat)}${i.style?' · '+i.style:''}</small></div></div>`}
 function setTab(t){tab=t;$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));render();window.scrollTo(0,0)}
 $$('nav button').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
-function render(){({kast:rKast,stijl:rStijl,maker:rMaker,opg:rOpg})[tab]()}
+function render(){({kast:rKast,stijl:rStijl,maker:rMaker,opg:rOpg,kal:rKal})[tab]()}
 function bind(){$$('[data-fav]').forEach(b=>b.onclick=e=>{e.stopPropagation();const i=byId(b.dataset.fav);i.fav=!i.fav;save();render()})}
 
 function formHtml(){const e=(editId&&byId(editId))||{};img=e.img||null;const col=e.color||SW[3];
@@ -125,7 +138,7 @@ function rMaker(){
  const ids=curIds();
  let h=`<div class="card"><div class="two"><select id="fs"><option value="">Alle stijlen</option>${STY.map(s=>`<option ${mf.st===s?'selected':''}>${s}</option>`).join('')}</select><select id="fz"><option value="">Alle seizoenen</option>${SEA.slice(1).map(s=>`<option ${mf.se===s?'selected':''}>${s}</option>`).join('')}</select></div>
  <div class="row" style="margin:0"><button class="btn full" id="rnd">Slim samenstellen</button><button class="btn sec" id="clr">Wissen</button></div></div>`;
- h+=ids.length?`<div class="card"><div class="top" style="margin-bottom:10px"><span class="tag">${harmony(ids)}</span><span class="tag g">${ids.length} items</span></div><div class="grid">${ids.map(byId).filter(Boolean).map(i=>tile(i)).join('')}</div>
+ h+=ids.length?`<div class="card"><div class="top" style="margin-bottom:10px"><span class="tag">${harmony(ids)}</span><span class="tag g">${ids.length} items</span></div><div class="grid">${ids.map(byId).filter(Boolean).map(i=>tile(i)).join('')}</div><div class="tipt">${advice(ids).tip}</div>
  <div class="row"><input type="text" id="on" placeholder="Naam van outfit"><button class="btn" id="sv">Opslaan</button></div></div>`:`<p class="empty">${items.length?'Laat de app kiezen of tik zelf items aan.':'Voeg eerst kleding toe in je kast.'}</p>`;
  CATS.forEach(([k,n])=>{const l=items.filter(i=>i.cat===k);if(l.length)h+=`<h2>${n}</h2><div class="scroll">${l.map(i=>tile(i,(k==='acc'?cur.acc.includes(i.id):cur[k]===i.id)?'sel':'',`data-pick="${i.id}"`)).join('')}</div>`});
  $('#app').innerHTML=h;
@@ -144,7 +157,7 @@ function rOpg(){
  <div class="row"><button class="btn sm full" data-ow="${o.id}">Vandaag gedragen</button><button class="btn sm sec" data-oe="${o.id}">Bewerk</button><button class="btn sm red" data-od="${o.id}">Verwijder</button></div></div>`).join(''):`<p class="empty">Nog geen outfits. Maak er een onder “Outfit maken”.</p>`;
  const f=id=>outfits.find(o=>o.id===id);
  $$('[data-of]').forEach(b=>b.onclick=()=>{const o=f(b.dataset.of);o.fav=!o.fav;save();rOpg()});
- $$('[data-ow]').forEach(b=>b.onclick=()=>{const o=f(b.dataset.ow);o.worn=(o.worn||0)+1;save();rOpg()});
+ $$('[data-ow]').forEach(b=>b.onclick=()=>{const o=f(b.dataset.ow);o.worn=(o.worn||0)+1;wear(o,dkey(new Date()));save();rOpg()});
  $$('[data-od]').forEach(b=>b.onclick=()=>{outfits=outfits.filter(o=>o.id!==b.dataset.od);save();rOpg()});
  $$('[data-oe]').forEach(b=>b.onclick=()=>{const o=f(b.dataset.oe);cur={acc:[]};o.ids.map(byId).filter(Boolean).forEach(i=>i.cat==='acc'?cur.acc.push(i.id):cur[i.cat]=i.id);outfits=outfits.filter(x=>x!==o);save();setTab('maker')});
 }
@@ -152,20 +165,49 @@ const SROWS=['acc','jas','trui','shirt','broek','schoenen'],OPT=['acc','jas','tr
 function sArr(k){const l=items.filter(i=>i.cat===k);return OPT.includes(k)?[null,...l]:l}
 function sIds(ix=sidx){return SROWS.map(k=>{const a=sArr(k);return a.length&&a[ix[k]||0]?a[ix[k]||0].id:null}).filter(Boolean)}
 function stp(el){const t=el.children;return t.length>1?t[1].offsetLeft-t[0].offsetLeft:130}
-function sInfo(){const ids=sIds(),e=$('#sinfo');if(e)e.innerHTML=ids.length?`<span class="tag">${harmony(ids)}</span><span class="tag g">${ids.length} items</span>`:''}
+function sInfo(){const ids=sIds(),e=$('#sinfo');if(e)e.innerHTML=ids.length?`<span class="tag">${harmony(ids)}</span><span class="tag g">${ids.length} items</span><div class="tipt">${advice(ids).tip}</div>`:''}
 function rStijl(){
  const rows=SROWS.filter(k=>sArr(k).length>(OPT.includes(k)?1:0));
  if(!rows.length){$('#app').innerHTML='<p class="empty">Voeg eerst kleding toe in je kast, dan kun je hier door je outfit swipen.</p>';return}
- $('#app').innerHTML=`<div class="card"><div class="row" style="margin:0"><button class="btn full" id="sh">Shuffle</button><button class="btn sec" id="sa">Opslaan</button></div><div class="row"><input type="text" id="sn" placeholder="Naam van outfit"></div><div id="sinfo" style="margin-top:8px"></div></div>
- <div class="stack">${rows.map(k=>`<div class="car"><div class="cl">${lab(k)}</div><div class="cs" data-k="${k}">${sArr(k).map(i=>i?tile(i):'<div class="tile none">Geen</div>').join('')}</div></div>`).join('')}</div>`;
+ $('#app').innerHTML=`<div class="card"><div class="row" style="margin:0"><button class="btn full" id="sh">Shuffle</button><button class="btn sec" id="sa">Opslaan</button></div><div class="row"><input type="text" id="sn" placeholder="Naam van outfit"></div><div class="row"><button class="btn sm sec" id="wxb">Weer ophalen</button><span id="wxt" class="mu">${wx?wxTxt(wx)+' · '+wxAdv(wx):'Voor een outfit die bij het weer past'}</span></div><div id="sinfo" style="margin-top:8px"></div></div>
+ <div class="stack">${rows.map(k=>`<div class="car"><div class="cl">${lab(k)}<button class="lk ${locked[k]?'on':''}" data-lk="${k}">${locked[k]?'Vast ✓':'Vastzetten'}</button></div><div class="cs" data-k="${k}">${sArr(k).map(i=>i?tile(i):'<div class="tile none">Geen</div>').join('')}</div></div>`).join('')}</div>`;
  const mark=(el,ix)=>[...el.children].forEach((c,n)=>c.classList.toggle('sel',n===ix));
  $$('.cs').forEach(el=>{const k=el.dataset.k,n=el.children.length;sidx[k]=Math.min(sidx[k]||0,n-1);
   el.scrollLeft=sidx[k]*stp(el);mark(el,sidx[k]);
   el.addEventListener('scroll',()=>{const ix=Math.max(0,Math.min(n-1,Math.round(el.scrollLeft/stp(el))));if(ix!==sidx[k]){sidx[k]=ix;mark(el,ix);sInfo()}},{passive:true})});
  sInfo();
- $('#sh').onclick=()=>{let best=null,bs=99;for(let t=0;t<12;t++){const c={};rows.forEach(k=>{const n=sArr(k).length;c[k]=OPT.includes(k)&&Math.random()<.45?0:Math.floor(Math.random()*n)});const ids=sIds(c),sc=clusters(ids);if(sc<bs){bs=sc;best=c}}
+ $$('[data-lk]').forEach(b=>b.onclick=()=>{const k=b.dataset.lk;locked[k]=!locked[k];b.textContent=locked[k]?'Vast ✓':'Vastzetten';b.classList.toggle('on',!!locked[k])});
+ $('#wxb').onclick=()=>{$('#wxt').textContent='Even zoeken…';getWx(e=>{$('#wxt').textContent=e||wxTxt(wx)+' · '+wxAdv(wx)})};
+ $('#sh').onclick=()=>{const t=wx?wx.t:null,pj=t==null?.5:t<8?1:t<15?.7:t<21?(wx.rain?.6:.2):0,pt=t==null?.6:t<8?.95:t<15?.7:t<21?.35:0,wok=i=>!wx||((wx.t<20||i.season!=='winter')&&(wx.t>=10||i.season!=='zomer'));
+  const pick=k=>{const a=sArr(k),pr=k==='jas'?pj:k==='trui'?pt:k==='acc'?.5:1;if(OPT.includes(k)&&Math.random()>pr)return 0;const g=a.map((x,n)=>n).filter(n=>a[n]&&wok(a[n]));return g.length?g[Math.floor(Math.random()*g.length)]:(OPT.includes(k)?0:Math.floor(Math.random()*a.length))};
+  let best=null,bs=99;for(let n=0;n<14;n++){const c={...sidx};rows.forEach(k=>{if(!locked[k])c[k]=pick(k)});const ids=sIds(c),sc=clusters(ids)+(advice(ids).dark?1:0);if(sc<bs){bs=sc;best=c}}
   sidx={...sidx,...best};$$('.cs').forEach(el=>el.scrollTo({left:sidx[el.dataset.k]*stp(el),behavior:'smooth'}))};
  $('#sa').onclick=()=>{const ids=sIds();if(!ids.length)return;outfits.unshift({id:uid(),name:$('#sn').value.trim()||'Outfit '+(outfits.length+1),ids,worn:0,fav:false});save();setTab('opg')};
+}
+let wx=null,locked={},log={},cm=new Date(),cday=null;cm.setDate(1);
+try{log=JSON.parse(localStorage.getItem('gd_log')||'{}')}catch(e){}
+const saveLog=()=>{try{localStorage.setItem('gd_log',JSON.stringify(log))}catch(e){}};
+const dkey=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function wear(o,k){(log[k]=log[k]||[]).push({n:o.name,ids:[...o.ids]});saveLog()}
+const wxTxt=w=>Math.round(w.t)+'° · '+(w.rain?'regen':'droog');
+const wxAdv=w=>(w.t<8?'Koud: jas én trui':w.t<15?'Fris: jas of trui':w.t<21?'Mild: lichte laag':'Warm: geen jas')+(w.rain&&w.t<21?', liefst waterafstotend':'');
+function getWx(cb){if(!navigator.geolocation){cb('Locatie niet beschikbaar');return}
+ navigator.geolocation.getCurrentPosition(async p=>{try{const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+p.coords.latitude+'&longitude='+p.coords.longitude+'&current=temperature_2m,precipitation,weather_code&timezone=auto'),j=(await r.json()).current;wx={t:j.temperature_2m,rain:j.precipitation>0||j.weather_code>=51};cb()}catch(e){cb('Weer ophalen mislukt')}},()=>cb('Geen toegang tot je locatie'),{timeout:10000})}
+function rKal(){
+ const y=cm.getFullYear(),m=cm.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,nd=new Date(y,m+1,0).getDate(),today=dkey(new Date());cday=cday||today;
+ let cells='';for(let i=0;i<first;i++)cells+='<i></i>';
+ for(let d=1;d<=nd;d++){const k=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');cells+=`<b data-d="${k}" class="${k===cday?'on ':''}${k===today?'td ':''}${log[k]?'has':''}">${d}</b>`}
+ const used=new Set(Object.values(log).flat().flatMap(e=>e.ids)),never=items.filter(i=>!used.has(i.id)),dl=log[cday]||[];
+ $('#app').innerHTML=`<div class="card"><div class="top"><button class="btn sm sec" id="pm">‹</button><b>${cm.toLocaleDateString('nl-NL',{month:'long',year:'numeric'})}</b><button class="btn sm sec" id="nx">›</button></div>
+ <div class="cal">${['ma','di','wo','do','vr','za','zo'].map(d=>'<span>'+d+'</span>').join('')}${cells}</div></div>
+ <div class="card"><b>${new Date(cday+'T12:00').toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long'})}</b>
+ ${dl.map((e,n)=>`<div class="wl"><div class="top" style="margin:8px 0 0"><span>${esc(e.n)}</span><button class="btn sm red" data-rl="${n}">Verwijder</button></div><div class="grid">${e.ids.map(byId).filter(Boolean).map(i=>tile(i)).join('')}</div></div>`).join('')||'<p class="empty" style="padding:10px 0">Niets gelogd op deze dag.</p>'}
+ ${outfits.length?`<div class="row"><select id="co">${outfits.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('')}</select><button class="btn" id="ca">Toevoegen</button></div>`:'<p class="mu">Sla eerst een outfit op om hem hier te loggen.</p>'}</div>
+ <h2>Nog nooit gedragen (${never.length})</h2>${Object.keys(log).length?'':'<p class="mu">Log outfits om te zien welke kleren je nooit draagt.</p>'}<div class="grid">${never.map(i=>tile(i)).join('')}</div>`;
+ $('#pm').onclick=()=>{cm.setMonth(cm.getMonth()-1);rKal()};$('#nx').onclick=()=>{cm.setMonth(cm.getMonth()+1);rKal()};
+ $$('[data-d]').forEach(b=>b.onclick=()=>{cday=b.dataset.d;rKal()});
+ $$('[data-rl]').forEach(b=>b.onclick=()=>{log[cday].splice(+b.dataset.rl,1);if(!log[cday].length)delete log[cday];saveLog();rKal()});
+ if($('#ca'))$('#ca').onclick=()=>{wear(outfits.find(o=>o.id===$('#co').value),cday);rKal()};
 }
 setTab('stijl');
 </script></body></html>
